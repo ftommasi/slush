@@ -1,6 +1,7 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <errno.h>
+#include <string.h>
 
 #define BUFFSIZE 200
 
@@ -62,7 +63,7 @@ string_list tokenize(char* string){
 int main(int argc, char** argv){
    
   while(1){
-    char* buf[BUFFSIZE];
+    char buf[BUFFSIZE];
     int prompt = write(STDOUT_FILENO,"SLUSH> ",7);
     int read_result = read(STDIN_FILENO,buf,BUFFSIZE);
 //    write(STDOUT_FILENO,buf,read_result);
@@ -70,28 +71,31 @@ int main(int argc, char** argv){
       perror("Error:");
       break;
     }
-
-    string_list tokenized = tokenize(buf);
-    int i=0;
+    char* new_buf = strtok(buf,"\n");
     
-    printf("[ ");
-    for(i; i< tokenized.size; i++){
-      if(tokenized.string_array[i] == "exit\0")
-        break;
-      int size = 0;
-      int j=0;
-      while(tokenized.string_array[i][j] != '\0'){
-        size++;//= sizeof(tokenized.string_array[j]);
-	j++;
-      }
-      
-      int write_result = write(STDOUT_FILENO,tokenized.string_array[i],size);
-      printf(", ");
+    char** my_argv[BUFFSIZE];
+    char* cmd  = strtok(new_buf," ");    
+    int i=0;
+    while(cmd){
+      argv[i] = cmd;
+      if(strcmp(argv[i],"exit"))
+        return -1;
+      cmd = strtok(NULL," ");
+      //cmd = strtok(NULL,"(");
+      i++;
     }
-
-      printf("] ");
-      //free(buf);
+    my_argv[i] = '\0';    
+    int j =0;
+    printf("[ ");
+    for(j; j < i+1; j++){
+      printf("%s",argv[j]);
+      if(j != i)
+        printf(", ");
+      else
+        printf(" ");
+    }
+    printf("]\n");
   }
-  printf("done\n");
+    
   return 0;
 }
