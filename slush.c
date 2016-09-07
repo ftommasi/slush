@@ -1,7 +1,13 @@
 #include <unistd.h>
 #include <stdio.h>
+#include <errno.h>
 
 #define BUFFSIZE 200
+
+typedef struct string_list{
+  char** string_array;
+  int size;
+}string_list;
 
 char* slice_str(char* string,int start, int end){
   if(start < end){
@@ -22,7 +28,7 @@ char* slice_str(char* string,int start, int end){
   }
 }
 
-char** tokenize(char* string){
+string_list tokenize(char* string){
   char** tokenized_string = (char**)malloc(sizeof(char)*BUFFSIZE*BUFFSIZE);
   int end = 0;
   int start = 0;
@@ -44,22 +50,44 @@ char** tokenize(char* string){
      
   }
   tokenized_string[tokens] = slice_str(string,start,end-1);
-  i=0;
-  for (i; i < tokens+1 ; i++){
-      printf("%s\n",tokenized_string[i]);
-  }
+  tokens++;
+  string_list tokenized;
+  
+  tokenized.string_array = tokenized_string;
+  tokenized.size = tokens;
+  return tokenized;
 
-  return tokenized_string;
 }
 
 int main(int argc, char** argv){
    
- // while(1){
-    char* buf;
+  while(1){
+    char* buf[BUFFSIZE];
     int prompt = write(STDOUT_FILENO,"SLUSH> ",7);
     int read_result = read(STDIN_FILENO,buf,BUFFSIZE);
-    char** tokenize(buf);
-    int write_result = write(STDOUT_FILENO,buf,read_result);
- // }
+//    write(STDOUT_FILENO,buf,read_result);
+    if(read_result == -1){
+      perror("Error:");
+      break;
+    }
 
+    string_list tokenized = tokenize(buf);
+    int i=0;
+    
+    printf("[ ");
+    for(i; i< tokenized.size; i++){
+      int size = 0;
+      int j=0;
+      while(tokenized.string_array[i][j] != '\0'){
+        size++;//= sizeof(tokenized.string_array[j]);
+	j++;
+      }
+      int write_result = write(STDOUT_FILENO,tokenized.string_array[i],size);
+      printf(", ");
+    }
+
+      printf("] ");
+  }
+  printf("done\n");
+  return 0;
 }
