@@ -1,6 +1,7 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <errno.h>
+#include <string.h>
 
 #define BUFFSIZE 200
 
@@ -14,8 +15,8 @@ char* slice_str(char* string,int start, int end){
     char* sliced = (char*)malloc(sizeof(char)*(start+end));
     int i = 0;
     for(start; start < end+1; start++){
-      char temp = string[start];
-      sliced[i] = temp;
+      char first_arg = string[start];
+      sliced[i] = first_arg;
       i++;
     }
    sliced[i] = '\0';
@@ -62,36 +63,61 @@ string_list tokenize(char* string){
 int main(int argc, char** argv){
    
   while(1){
-    char* buf[BUFFSIZE];
+    char buf[BUFFSIZE];
     int prompt = write(STDOUT_FILENO,"SLUSH> ",7);
     int read_result = read(STDIN_FILENO,buf,BUFFSIZE);
 //    write(STDOUT_FILENO,buf,read_result);
     if(read_result == -1){
       perror("Error:");
-      break;
+      return -1;
     }
-
-    string_list tokenized = tokenize(buf);
-    int i=0;
     
-    printf("[ ");
-    for(i; i< tokenized.size; i++){
-      if(tokenized.string_array[i] == "exit\0")
-        break;
-      int size = 0;
-      int j=0;
-      while(tokenized.string_array[i][j] != '\0'){
-        size++;//= sizeof(tokenized.string_array[j]);
-	j++;
-      }
-      
-      int write_result = write(STDOUT_FILENO,tokenized.string_array[i],size);
-      printf(", ");
+    if(read_result == 0){
+      printf("Found EOF\n");
+      return 0;
+   }
+    char* new_buf = strtok(buf,"\n");
+    
+    char** my_argv[BUFFSIZE*BUFFSIZE];// = (char**) malloc(sizeof(char)*BUFFSIZE*BUFFSIZE);
+    char* cmd  = strtok(new_buf," ");    
+    int i=0;
+    while(cmd){
+      my_argv[i] = cmd;
+      cmd = strtok(NULL," ");
+      //cmd = strtok(NULL,"(");
+      i++;
     }
-
-      printf("] ");
-      //free(buf);
+   my_argv[i] = '\0';
+   
+   char* first_arg = (char*)malloc(sizeof(char)*BUFFSIZE);
+   strcpy(first_arg,my_argv[0]);
+   if(!strcmp(first_arg,"exit")){
+     printf("exiting...\n");
+     return -1;
+   }
+    
+    //Debug Dump
+    int j =0;
+    printf("[ ");
+    for(j; j < i+1; j++){
+      printf("%s",my_argv[j]);
+      if(j != i)
+        printf(", ");
+      else
+        printf(" ");
+    }
+    printf("]\n");
+    //end Debug dump
+    
+    //must fork here
+    int pid = fork();
+    if(pid != 0){
+      waitpid(pid,NULL,0);
+    }
+    else{
+      execvp(my_argv[0],my_argv);
+    }
   }
-  printf("done\n");
+  printf("successful exit\n"); 
   return 0;
 }
