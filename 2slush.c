@@ -15,8 +15,8 @@ char* slice_str(char* string,int start, int end){
     char* sliced = (char*)malloc(sizeof(char)*(start+end));
     int i = 0;
     for(start; start < end+1; start++){
-      char temp = string[start];
-      sliced[i] = temp;
+      char first_arg = string[start];
+      sliced[i] = first_arg;
       i++;
     }
    sliced[i] = '\0';
@@ -69,10 +69,13 @@ int main(int argc, char** argv){
 //    write(STDOUT_FILENO,buf,read_result);
     if(read_result == -1){
       perror("Error:");
-      break;
+      return -1;
     }
-    if(read_result == 0)
+    
+    if(read_result == 0){
+      printf("Found EOF\n");
       return 0;
+   }
     char* new_buf = strtok(buf,"\n");
     
     char** my_argv[BUFFSIZE*BUFFSIZE];// = (char**) malloc(sizeof(char)*BUFFSIZE*BUFFSIZE);
@@ -85,14 +88,15 @@ int main(int argc, char** argv){
       i++;
     }
    my_argv[i] = '\0';
-   int k=0;
-   //printf("%s",my_argv[0]);
-   char* temp = (char*)malloc(sizeof(char)*BUFFSIZE);
-   strcpy(temp,my_argv[0]);
-   if(!strcmp(temp,"exit")){
+   
+   char* first_arg = (char*)malloc(sizeof(char)*BUFFSIZE);
+   strcpy(first_arg,my_argv[0]);
+   if(!strcmp(first_arg,"exit")){
+     printf("exiting...\n");
      return -1;
    }
- 
+    
+    //Debug Dump
     int j =0;
     printf("[ ");
     for(j; j < i+1; j++){
@@ -103,8 +107,17 @@ int main(int argc, char** argv){
         printf(" ");
     }
     printf("]\n");
-    execvp(my_argv[0],my_argv);
-  }
+    //end Debug dump
     
+    //must fork here
+    int pid = fork();
+    if(pid != 0){
+      waitpid(pid,NULL,0);
+    }
+    else{
+      execvp(my_argv[0],my_argv);
+    }
+  }
+  printf("successful exit\n"); 
   return 0;
 }
