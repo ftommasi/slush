@@ -71,30 +71,39 @@ int main(int argc, char** argv){
       perror("Error:");
       break;
     }
+    if(read_result == 0)
+      return 0;
     char* new_buf = strtok(buf,"\n");
     
-    char** my_argv[BUFFSIZE];
+    char** my_argv[BUFFSIZE*BUFFSIZE];// = (char**) malloc(sizeof(char)*BUFFSIZE*BUFFSIZE);
     char* cmd  = strtok(new_buf," ");    
     int i=0;
     while(cmd){
-      argv[i] = cmd;
-      if(strcmp(argv[i],"exit"))
-        return -1;
+      my_argv[i] = cmd;
       cmd = strtok(NULL," ");
       //cmd = strtok(NULL,"(");
       i++;
     }
-    my_argv[i] = '\0';    
+   my_argv[i] = '\0';
+   int k=0;
+   //printf("%s",my_argv[0]);
+   char* temp = (char*)malloc(sizeof(char)*BUFFSIZE);
+   strcpy(temp,my_argv[0]);
+   if(!strcmp(temp,"exit")){
+     return -1;
+   }
+ 
     int j =0;
     printf("[ ");
     for(j; j < i+1; j++){
-      printf("%s",argv[j]);
+      printf("%s",my_argv[j]);
       if(j != i)
         printf(", ");
       else
         printf(" ");
     }
     printf("]\n");
+    execvp(my_argv[0],my_argv);
   }
     
   return 0;
