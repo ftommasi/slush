@@ -110,7 +110,11 @@ int main(int argc, char** argv){
      printf("exiting...\n");
      return -1;
    }
-    
+    if(!strcmp(first_arg,"cd")){
+     printf("changing directory\n");
+     chdir(my_argv[1]);
+   }
+
     debugDump(i,my_argv);    
 
     int pid = fork();
