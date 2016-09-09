@@ -60,42 +60,7 @@ string_list tokenize(char* string){
 
 }
 
-int main(int argc, char** argv){
-   
-  while(1){
-    char buf[BUFFSIZE];
-    int prompt = write(STDOUT_FILENO,"SLUSH> ",7);
-    int read_result = read(STDIN_FILENO,buf,BUFFSIZE);
-//    write(STDOUT_FILENO,buf,read_result);
-    if(read_result == -1){
-      perror("Error:");
-      return -1;
-    }
-    
-    if(read_result == 0){
-      printf("Found EOF\n");
-      return 0;
-   }
-    char* new_buf = strtok(buf,"\n");
-    
-    char** my_argv[BUFFSIZE*BUFFSIZE];// = (char**) malloc(sizeof(char)*BUFFSIZE*BUFFSIZE);
-    char* cmd  = strtok(new_buf," ");    
-    int i=0;
-    while(cmd){
-      my_argv[i] = cmd;
-      cmd = strtok(NULL," ");
-      //cmd = strtok(NULL,"(");
-      i++;
-    }
-   my_argv[i] = '\0';
-   
-   char* first_arg = (char*)malloc(sizeof(char)*BUFFSIZE);
-   strcpy(first_arg,my_argv[0]);
-   if(!strcmp(first_arg,"exit")){
-     printf("exiting...\n");
-     return -1;
-   }
-    
+void debugDump(int i,char** my_argv){
     //Debug Dump
     int j =0;
     printf("[ ");
@@ -108,8 +73,50 @@ int main(int argc, char** argv){
     }
     printf("]\n");
     //end Debug dump
+
+}
+
+int main(int argc, char** argv){
+   
+  while(1){
+    char buf[BUFFSIZE];
+    int prompt = write(STDOUT_FILENO,"SLUSH> ",7);
+    int read_result = read(STDIN_FILENO,buf,BUFFSIZE);
+    if(read_result == -1){
+      perror("Error:");
+      return -1;
+    }
     
-    //must fork here
+    if(read_result == 0){
+      printf("Found EOF\n");
+      return 0;
+   }
+    char* new_buf = strtok(buf,"\n");
+    
+    char** my_argv[BUFFSIZE*BUFFSIZE];
+    char* cmd  = strtok(new_buf," ");    
+    int i=0;
+    while(cmd){
+      my_argv[i] = cmd;
+      cmd = strtok(NULL," ");
+      //TODO add piping logic
+      i++;
+    }
+   my_argv[i] = '\0';
+   
+   char* first_arg = (char*)malloc(sizeof(char)*BUFFSIZE);
+   strcpy(first_arg,my_argv[0]);
+   if(!strcmp(first_arg,"exit")){
+     printf("exiting...\n");
+     return -1;
+   }
+    if(!strcmp(first_arg,"cd")){
+     printf("changing directory\n");
+     chdir(my_argv[1]);
+   }
+
+    debugDump(i,my_argv);    
+
     int pid = fork();
     if(pid != 0){
       waitpid(pid,NULL,0);
