@@ -148,9 +148,11 @@ int main(int argc, char** argv){
     int current = 0;
     char* new_cwd = strtok(cwd,"/");
     while(new_cwd){
-      tail_cwd[current] = new_cwd;
+      tail_cwd[0] = tail_cwd[1];
+      tail_cwd[1] = new_cwd;
       current= (current+1)%2;
       new_cwd = strtok(NULL,"/");
+
     }
     char display_cwd[256];
     strcpy(display_cwd,tail_cwd[0]);
@@ -206,7 +208,10 @@ int main(int argc, char** argv){
         waitpid(pid,NULL,0);
       }
       else{
-        execvp(my_argv[0],my_argv);
+        int exec_result = execvp(my_argv[0],my_argv);
+	if(!exec_result){
+	  perror("Error: ");
+	}
       }
     }
   }
