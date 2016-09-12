@@ -76,73 +76,109 @@ void debugDump(int i,char** my_argv){
 
 }
 
-
-/*
-void pipe_commands(stack commands){
-  if(commands.empty)
-    return;
-  tokenized = tokenize();
-  stack.addAll(tokenized);
-  pid = fork();
-  if(pid == parent)
-    wait(child_pid);
-    close(fd[0]);
-  else
-    dup2(fd[0],STDOUT_FILENO);
-    pipe_commands(stack.pop);
-  //def parse():
-    //parse()
-    //fork()
-    //exec()
+void sighandler(int signum){
+  printf("^C\n");
 }
-*/
 
-void pipe_commands(){
+
+int parse(char* commands){
+  
+  int readfd;
   int fd[2];
-  pipe(fd);
+  if(commands){
+    
 
-  int pid = fork();
-  if(!pid){
-    waitpid(pid,NULL,0);
-  } 
-  else {
-    dup2(fd[1], STDOUT_FILENO);
-    close(fd[0]);
-    //child 1 exec
-    char* cmd = "./program1";
-    char* myargv[] = {"program1", '\0'};
-    int ret = execvp( cmd, myargv );
-    if( ret == -1 ) perror("Error exec'ing program1");
+    char* current_command = strtok(commands,"(");
+    char* new_commands = strtok(NULL,"/0");
+    char first = 0;
+    char last = 0;
+    if(current_command[0] == '>'){  
+      printf("last command: %s\n",current_command);
+      last = 1; 
+    }
+    if(current_command[strlen(current_command)-1] == '<'){ 
+      printf("first command: %s\n",current_command);
+      first = 1;
+    }
+    
+    //must remove < and > sentinel chars
+
+    printf("Current: %s\nRecurse: %s\n"
+      ,current_command,new_commands);
+    readfd = parse(new_commands);
+    // if has leading space then first - oh no bad smell
+    // if has trailing newline then last
+    if(!first){ //not first
+      printf("%s is not first command\n",current_command);
+      dup2(readfd,stdin);
+    }
+    if(!last){ //not last
+      printf("%s is not last command\n",current_command);
+      dup2(fd[1],stdout);
+    }
+    //parse current_command & args to execute
+    char* cmd  = strtok(current_command," ");    
+    char* my_argv[256*256];
+    int i=0;
+    while(cmd){
+      my_argv[i] = cmd;
+      cmd = strtok(NULL," ");
+      i++;
+    }
+    my_argv[i] = '\0';
+    int j =0;
+    while(my_argv[j] != '\0'){
+      printf("%s ",my_argv[j]);
+      j++;
+    }
+    char* first_arg = (char*)malloc(sizeof(char)*BUFFSIZE);
+    strcpy(first_arg,my_argv[0]);
+    
+    if(!strcmp(first_arg,"exit")){
+      printf("exiting...\n");
+      exit(-1);
+    }
+    if(!strcmp(first_arg,"cd")){
+      printf("changing directory\n");
+      chdir(my_argv[1]);
+    }
+    
+    debugDump(i,my_argv);    
+    //AFTER FORK CLOSE WRITE END OF PIPE GIVEN
+    
+//    int fd[2];
+    pipe(fd);
+
+    int pid = fork();
+    if(pid != 0){
+
+      wait(pid,NULL,0);
+    }
+    else{
+      
+      dup2(fd[1], STDOUT_FILENO);
+      close(fd[0]);
+      int exec_result = execvp(my_argv[0],my_argv);
+      if(exec_result == -1){
+        perror("Error: ");
+	exit(-1); 
+      }
+    }
   }
-
-  pid = fork();
-  if(!pid){
-    waitpid(pid,NULL,0);
-  } 
-  else {
-    dup2(fd[0], STDIN_FILENO);
+  else{
+    printf("returning...\n");
+    close(readfd);
     close(fd[1]);
-    //child 2 exec
-    char* cmd = "./program2";
-    char* myargv[] = {"program2", '\0'};
-    int ret = execvp( cmd, myargv );
-    if( ret == -1 ) perror("Error exec'ing program2");
+    return fd[0];
   }
-
-  close(fd[1]);
-  close(fd[0]);
-
 }
-
 
 int main(int argc, char** argv){
    
   while(1){
+    //signal(2,sighandler);
     char buf[BUFFSIZE];
     //Extra Credit
-    //TODO BUG ODD NUMBER PWD shows dirs in reverse
-    //i.e. EXPECTED studios/studio6 RESULT studio6/studios
-    //     PWD = /student/ftommasi/csci3500/studios/studio6
     char * cwd = get_current_dir_name();
     char* tail_cwd[2];
     int current = 0;
@@ -159,11 +195,13 @@ int main(int argc, char** argv){
     strcat(display_cwd,"/");
     strcat(display_cwd,tail_cwd[1]);
     strcat(display_cwd,"/");
+    
     int prompt = write(STDOUT_FILENO,"SLUSH|",6);
     prompt = write(STDOUT_FILENO,display_cwd,
       strlen(display_cwd));
     prompt = write(STDOUT_FILENO,"> ",2);
     //End Extra Credit
+    
     int read_result = read(STDIN_FILENO,buf,BUFFSIZE);
     if(read_result == -1){
       perror("Error:");
@@ -174,50 +212,20 @@ int main(int argc, char** argv){
       printf("Found EOF\n");
       return 0;
    }
-    char* new_buf = strtok(buf,"\n");
-    if(new_buf){
-      char** my_argv[BUFFSIZE*BUFFSIZE];
-      printf("BEFORE FIRST STRTOK newbuf:%s\n",new_buf);
-      char* cmd  = strtok(new_buf," ");    
-      int i=0;
-      while(cmd){
-        my_argv[i] = cmd;
-        cmd = strtok(NULL," ");
-        //TODO add piping logic
-        i++;
-      }
-      my_argv[i] = '\0';
-      printf("MADE IT OUT\n") ;
-      char* first_arg = (char*)malloc(sizeof(char)*BUFFSIZE);
-      printf("BEFORE STRCPY\n");
-      strcpy(first_arg,my_argv[0]);
-      printf("MADE IT OUT\n");
-      if(!strcmp(first_arg,"exit")){
-        printf("exiting...\n");
-        return -1;
-      }
-      if(!strcmp(first_arg,"cd")){
-        printf("changing directory\n");
-        chdir(my_argv[1]);
-      }
-      printf("BEFORE DEBUG DUMP\n");
-      debugDump(i,my_argv);    
-      printf("MADE IT OUT\n");
-      int pid = fork();
-      if(pid != 0){
-        waitpid(pid,NULL,0);
-      }
-      else{
-        int exec_result = execvp(my_argv[0],my_argv);
-	if(!exec_result){
-	  perror("Error: ");
-	}
-      }
-    }
+   printf("buf: %s\n",buf);
+   char* new_buf = strtok(buf,"\n");//)char*)malloc(BUFFSIZE*sizeof(char));
+   printf("new_buf: %s\n",new_buf);
+   char marked_buf[256] = ">";
+   strcat(marked_buf,new_buf);
+   printf("after cat\n");
+   char* end_sentinel = "<";
+   strcat(marked_buf,end_sentinel);
+   //strcat(new_buf," ");
+   // strcpy(new_buf,buf);// ;
+    printf("parse\n");
+    parse(marked_buf);
   }
 
-  //END PARSE
-  
   printf("successful exit\n"); 
   return 0;
 }
