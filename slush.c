@@ -76,11 +76,72 @@ void debugDump(int i,char** my_argv){
 
 }
 
+
+/*
+void pipe_commands(stack commands){
+  if(commands.empty)
+    return;
+  tokenized = tokenize();
+  stack.addAll(tokenized);
+  pid = fork();
+  if(pid == parent)
+    wait(child_pid);
+    close(fd[0]);
+  else
+    dup2(fd[0],STDOUT_FILENO);
+    pipe_commands(stack.pop);
+  //def parse():
+    //parse()
+    //fork()
+    //exec()
+}
+*/
+
+void pipe_commands(){
+  int fd[2];
+  pipe(fd);
+
+  int pid = fork();
+  if(!pid){
+    waitpid(pid,NULL,0);
+  } 
+  else {
+    dup2(fd[1], STDOUT_FILENO);
+    close(fd[0]);
+    //child 1 exec
+    char* cmd = "./program1";
+    char* myargv[] = {"program1", '\0'};
+    int ret = execvp( cmd, myargv );
+    if( ret == -1 ) perror("Error exec'ing program1");
+  }
+
+  pid = fork();
+  if(!pid){
+    waitpid(pid,NULL,0);
+  } 
+  else {
+    dup2(fd[0], STDIN_FILENO);
+    close(fd[1]);
+    //child 2 exec
+    char* cmd = "./program2";
+    char* myargv[] = {"program2", '\0'};
+    int ret = execvp( cmd, myargv );
+    if( ret == -1 ) perror("Error exec'ing program2");
+  }
+
+  close(fd[1]);
+  close(fd[0]);
+
+}
+
+
 int main(int argc, char** argv){
    
   while(1){
     char buf[BUFFSIZE];
-    int prompt = write(STDOUT_FILENO,"SLUSH> ",7);
+    char * cwd = get_current_dir_name();
+    int prompt = write(STDOUT_FILENO,"SLUSH> |",8);
+    prompt = write(STDOUT_FILENO,cwd,strlen(cwd));
     int read_result = read(STDIN_FILENO,buf,BUFFSIZE);
     if(read_result == -1){
       perror("Error:");
@@ -92,7 +153,10 @@ int main(int argc, char** argv){
       return 0;
    }
     char* new_buf = strtok(buf,"\n");
-    
+    if(new_buf){
+     //printf("NULL FIRST ARG\n");
+     //break;
+    //BEGIN PARSE
     char** my_argv[BUFFSIZE*BUFFSIZE];
     char* cmd  = strtok(new_buf," ");    
     int i=0;
@@ -114,17 +178,24 @@ int main(int argc, char** argv){
      printf("changing directory\n");
      chdir(my_argv[1]);
    }
-
+   if(!strcmp(first_arg,NULL)){
+     printf("NULL FIRST ARG\n");
+   }
     debugDump(i,my_argv);    
+      int pid = fork();
+      if(pid != 0){
+        waitpid(pid,NULL,0);
+      }
+      else{
+        execvp(my_argv[0],my_argv);
+      }
+   }
+    }
 
-    int pid = fork();
-    if(pid != 0){
-      waitpid(pid,NULL,0);
-    }
-    else{
-      execvp(my_argv[0],my_argv);
-    }
-  }
+    //END PARSE
   printf("successful exit\n"); 
   return 0;
 }
+
+
+
