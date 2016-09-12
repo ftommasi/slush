@@ -139,9 +139,29 @@ int main(int argc, char** argv){
    
   while(1){
     char buf[BUFFSIZE];
+    //Extra Credit
+    //TODO BUG ODD NUMBER PWD shows dirs in reverse
+    //i.e. EXPECTED studios/studio6 RESULT studio6/studios
+    //     PWD = /student/ftommasi/csci3500/studios/studio6
     char * cwd = get_current_dir_name();
-    int prompt = write(STDOUT_FILENO,"SLUSH> |",8);
-    prompt = write(STDOUT_FILENO,cwd,strlen(cwd));
+    char* tail_cwd[2];
+    int current = 0;
+    char* new_cwd = strtok(cwd,"/");
+    while(new_cwd){
+      tail_cwd[current] = new_cwd;
+      current= (current+1)%2;
+      new_cwd = strtok(NULL,"/");
+    }
+    char display_cwd[256];
+    strcpy(display_cwd,tail_cwd[0]);
+    strcat(display_cwd,"/");
+    strcat(display_cwd,tail_cwd[1]);
+    strcat(display_cwd,"/");
+    int prompt = write(STDOUT_FILENO,"SLUSH|",6);
+    prompt = write(STDOUT_FILENO,display_cwd,
+      strlen(display_cwd));
+    prompt = write(STDOUT_FILENO,"> ",2);
+    //End Extra Credit
     int read_result = read(STDIN_FILENO,buf,BUFFSIZE);
     if(read_result == -1){
       perror("Error:");
@@ -154,34 +174,33 @@ int main(int argc, char** argv){
    }
     char* new_buf = strtok(buf,"\n");
     if(new_buf){
-     //printf("NULL FIRST ARG\n");
-     //break;
-    //BEGIN PARSE
-    char** my_argv[BUFFSIZE*BUFFSIZE];
-    char* cmd  = strtok(new_buf," ");    
-    int i=0;
-    while(cmd){
-      my_argv[i] = cmd;
-      cmd = strtok(NULL," ");
-      //TODO add piping logic
-      i++;
-    }
-   my_argv[i] = '\0';
-   
-   char* first_arg = (char*)malloc(sizeof(char)*BUFFSIZE);
-   strcpy(first_arg,my_argv[0]);
-   if(!strcmp(first_arg,"exit")){
-     printf("exiting...\n");
-     return -1;
-   }
-    if(!strcmp(first_arg,"cd")){
-     printf("changing directory\n");
-     chdir(my_argv[1]);
-   }
-   if(!strcmp(first_arg,NULL)){
-     printf("NULL FIRST ARG\n");
-   }
-    debugDump(i,my_argv);    
+      char** my_argv[BUFFSIZE*BUFFSIZE];
+      printf("BEFORE FIRST STRTOK newbuf:%s\n",new_buf);
+      char* cmd  = strtok(new_buf," ");    
+      int i=0;
+      while(cmd){
+        my_argv[i] = cmd;
+        cmd = strtok(NULL," ");
+        //TODO add piping logic
+        i++;
+      }
+      my_argv[i] = '\0';
+      printf("MADE IT OUT\n") ;
+      char* first_arg = (char*)malloc(sizeof(char)*BUFFSIZE);
+      printf("BEFORE STRCPY\n");
+      strcpy(first_arg,my_argv[0]);
+      printf("MADE IT OUT\n");
+      if(!strcmp(first_arg,"exit")){
+        printf("exiting...\n");
+        return -1;
+      }
+      if(!strcmp(first_arg,"cd")){
+        printf("changing directory\n");
+        chdir(my_argv[1]);
+      }
+      printf("BEFORE DEBUG DUMP\n");
+      debugDump(i,my_argv);    
+      printf("MADE IT OUT\n");
       int pid = fork();
       if(pid != 0){
         waitpid(pid,NULL,0);
@@ -189,10 +208,11 @@ int main(int argc, char** argv){
       else{
         execvp(my_argv[0],my_argv);
       }
-   }
     }
+  }
 
-    //END PARSE
+  //END PARSE
+  
   printf("successful exit\n"); 
   return 0;
 }
