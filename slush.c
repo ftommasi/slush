@@ -4,6 +4,9 @@
 #include <string.h>
 
 #define BUFFSIZE 200
+#define READ_PIPE 0
+#define WRITE_PIPE 1
+
 
 typedef struct string_list{
   char** string_array;
@@ -82,41 +85,44 @@ void sighandler(int signum){
 
 
 int parse(char* commands){
+//  printf("Begin Parse: %s\n",commands); 
+    
+  char* current_command = strtok(commands,"(");
+//  printf("current: %s\n",current_command);
+  //char new_commands[256] = strtok(commands,"(");
+  char* new_commands = strtok(NULL,"\0");
   
   int readfd;
-  int fd[2];
-  if(commands){
-    
-
-    char* current_command = strtok(commands,"(");
-    char* new_commands = strtok(NULL,"/0");
+//  printf("passed tokenizing\n");
+  if(!current_command){
+    //printf("%s\n",current_command);
+    return NULL;
+  }
+  else{
+//    printf("not null current command: %s\n",current_command);
     char first = 0;
     char last = 0;
     if(current_command[0] == '>'){  
-      printf("last command: %s\n",current_command);
       last = 1; 
     }
     if(current_command[strlen(current_command)-1] == '<'){ 
-      printf("first command: %s\n",current_command);
       first = 1;
     }
     
-    //must remove < and > sentinel chars
-
-    printf("Current: %s\nRecurse: %s\n"
-      ,current_command,new_commands);
+    //remove < and > sentinel chars
+     if(last){
+      current_command = slice_str(current_command,1,strlen(current_command));
+ //     printf("fixed command : %s\n",current_command);
+    }
+    
+    if(first){
+      current_command = slice_str(current_command,0,strlen(current_command)-2);
+  //    printf("fixed command : %s\n",current_command);
+    }
+    
+   // printf("Current: %s\nRecurse: %s\n"      ,current_command,new_commands);
     readfd = parse(new_commands);
-    // if has leading space then first - oh no bad smell
-    // if has trailing newline then last
-    if(!first){ //not first
-      printf("%s is not first command\n",current_command);
-      dup2(readfd,stdin);
-    }
-    if(!last){ //not last
-      printf("%s is not last command\n",current_command);
-      dup2(fd[1],stdout);
-    }
-    //parse current_command & args to execute
+        //parse current_command & args to execute
     char* cmd  = strtok(current_command," ");    
     char* my_argv[256*256];
     int i=0;
@@ -143,34 +149,60 @@ int parse(char* commands){
       chdir(my_argv[1]);
     }
     
-    debugDump(i,my_argv);    
+    //debugDump(i,my_argv);    
     //AFTER FORK CLOSE WRITE END OF PIPE GIVEN
-    
-//    int fd[2];
-    pipe(fd);
 
+    printf("\npiping\n");
+    int fd[2];
+    pipe(fd);
     int pid = fork();
     if(pid != 0){
-
+     // close(fd[0]);
+     // close(fd[1]);
+      printf("Waiting for child to execute %s\n",my_argv[0]);
       wait(pid,NULL,0);
     }
     else{
+    printf("COMMAND: %s PIPE READ: %d PIPE WRITE: %d\n",current_command,fd[READ_PIPE],fd[WRITE_PIPE]);
+    //close(fd[READ_PIPE]);
+    printf("\nCLOSING PIPE %d\n",fd[READ_PIPE]);
+    
+    //CLOSE WRITE RETURN READ
+    int new_READ = dup2(fd[READ_PIPE],readfd);
+    if(new_READ == -1 ) perror("ERROR");
+    printf("Replacing %d with %d\n",fd[READ_PIPE],readfd);
+    //close(fd[READ_PIPE]);  
+
+
+    if(first){ 
+      new_READ = dup2(fd[READ_PIPE],STDIN_FILENO);
+      if(new_READ == -1 ) perror("ERROR");
+  //    close(fd[WRITE_PIPE]);
+      printf("COMMAND %s replacing %d with stdin\n",current_command,fd[READ_PIPE]);
+
+    }
+    if(last){ 
+      new_READ = dup2(readfd,STDOUT_FILENO);
+      if(new_READ == -1 ) perror("ERROR");
+    //  close(readfd);
+      printf("COMMAND %s replacing %d with stdout\n",readfd);
+    }
       
-      dup2(fd[1], STDOUT_FILENO);
-      close(fd[0]);
+    //  dup2(fd[WRITE_PIPE], STDOUT_FILENO);
+     // close(fd[READ_PIPE]);
+      printf("\nEXEC'ING <%s> READING FROM: %d WRITING TO: %d\n",my_argv[0],fd[READ_PIPE],fd[WRITE_PIPE]);
       int exec_result = execvp(my_argv[0],my_argv);
       if(exec_result == -1){
         perror("Error: ");
 	exit(-1); 
       }
     }
-  }
-  else{
-    printf("returning...\n");
-    close(readfd);
-    close(fd[1]);
-    return fd[0];
-  }
+    //close();
+    //printf("closing %d\n",readfd);
+    //close(fd[WRITE_PIPE]);
+    printf("returning %d\n",fd[WRITE_PIPE]);
+    return fd[WRITE_PIPE];
+  }  
 }
 
 int main(int argc, char** argv){
@@ -212,17 +244,17 @@ int main(int argc, char** argv){
       printf("Found EOF\n");
       return 0;
    }
-   printf("buf: %s\n",buf);
+  // printf("buf: %s\n",buf);
    char* new_buf = strtok(buf,"\n");//)char*)malloc(BUFFSIZE*sizeof(char));
-   printf("new_buf: %s\n",new_buf);
+//   printf("new_buf: %s\n",new_buf);
    char marked_buf[256] = ">";
    strcat(marked_buf,new_buf);
-   printf("after cat\n");
-   char* end_sentinel = "<";
+  // printf("after cat\n");
+   char* end_sentinel = "<\0";
    strcat(marked_buf,end_sentinel);
-   //strcat(new_buf," ");
    // strcpy(new_buf,buf);// ;
-    printf("parse\n");
+   //strcat(new_buf," ");
+//    printf("parse\n");
     parse(marked_buf);
   }
 
