@@ -156,36 +156,53 @@ int parse(char* commands){
     int fd[2];
     pipe(fd);
     int pid = fork();
-    if(pid != 0){
+    if(pid != 0){ //if parent
      // close(fd[0]);
      // close(fd[1]);
-      printf("Waiting for child to execute %s\n",my_argv[0]);
+      printf("PARENT HAS READ: %d WRITE: %d\n",fd[READ_PIPE],fd[WRITE_PIPE]);
+      printf("Parent pid %d\n",getpid());
+      printf("Waiting for child PID: %d to execute %s\n",pid,my_argv[0]);
       wait(pid,NULL,0);
+      //close(fd[0]);
+      //close(fd[1]);
+
     }
     else{
-    printf("COMMAND: %s PIPE READ: %d PIPE WRITE: %d\n",current_command,fd[READ_PIPE],fd[WRITE_PIPE]);
+
+    printf("CHILD COMMAND: %s PIPE READ: %d PIPE WRITE: %d\n",current_command,fd[READ_PIPE],fd[WRITE_PIPE]);
     //close(fd[READ_PIPE]);
     printf("\nCLOSING PIPE %d\n",fd[READ_PIPE]);
     
     //CLOSE WRITE RETURN READ
-    int new_READ = dup2(fd[READ_PIPE],readfd);
+    int new_READ;// = dup2(fd[READ_PIPE],readfd);
     if(new_READ == -1 ) perror("ERROR");
     printf("Replacing %d with %d\n",fd[READ_PIPE],readfd);
     //close(fd[READ_PIPE]);  
+    //A pipe automatically overtakes stdin and stdout    
+    //if not first then change read from stdin to pipe
+    //if not last change write from from stdout to pipe
+    
+   
 
-
-    if(first){ 
-      new_READ = dup2(fd[READ_PIPE],STDIN_FILENO);
+    if(!first){
+      //change write
+      new_READ = dup2(readfd,STDIN_FILENO);
+      close(fd[WRITE_PIPE]);
+      close(fd[READ_PIPE]);
       if(new_READ == -1 ) perror("ERROR");
   //    close(fd[WRITE_PIPE]);
       printf("COMMAND %s replacing %d with stdin\n",current_command,fd[READ_PIPE]);
 
     }
-    if(last){ 
-      new_READ = dup2(readfd,STDOUT_FILENO);
+
+    if(!last){ 
+      //change read
+      new_READ = dup2(fd[WRITE_PIPE],STDOUT_FILENO);
+      close(fd[READ_PIPE]);//fd[READ_PIPE]
+      close(readfd);
       if(new_READ == -1 ) perror("ERROR");
     //  close(readfd);
-      printf("COMMAND %s replacing %d with stdout\n",readfd);
+      printf("COMMAND %s replacing %d with stdin\n",readfd);
     }
       
     //  dup2(fd[WRITE_PIPE], STDOUT_FILENO);
@@ -197,11 +214,13 @@ int parse(char* commands){
 	exit(-1); 
       }
     }
+
     //close();
     //printf("closing %d\n",readfd);
     //close(fd[WRITE_PIPE]);
-    printf("returning %d\n",fd[WRITE_PIPE]);
-    return fd[WRITE_PIPE];
+    printf("returning %d %s from %d\n",fd[READ_PIPE],current_command,getpid());
+    return fd[READ_PIPE];
+
   }  
 }
 
