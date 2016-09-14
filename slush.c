@@ -26,13 +26,12 @@ char* slice_str(char* string,int start, int end){
    return sliced; 
   }
   else{
-    //implement string reversal?
     printf("INVALID START/END FLAGS");
     return string;
   }
 }
 
-string_list tokenize(char* string){
+string_list tokenize(char* string,char * delimiter){
   char** tokenized_string = (char**)malloc(sizeof(char)*BUFFSIZE*BUFFSIZE);
   int end = 0;
   int start = 0;
@@ -40,7 +39,7 @@ string_list tokenize(char* string){
   int tokens = 0;
   while (string[i] != '\0'){ //guard for buffer overflow??
    
-     if(string[i] == ' ' || string[i] == '(' || string[i] == ')'){
+     if(!strcmp(string[i],delimiter)){
        //we should keep reading for consecutive spaces/parens/other token delimiters here
        char* token = slice_str(string,start,end);
        tokenized_string[tokens] = token;
@@ -162,8 +161,8 @@ int parse(char* commands){
       printf("PARENT HAS READ: %d WRITE: %d\n",fd[READ_PIPE],fd[WRITE_PIPE]);
       printf("Parent pid %d\n",getpid());
       printf("Waiting for child PID: %d to execute %s\n",pid,my_argv[0]);
-      wait(pid,NULL,0);
-      
+      //wait(pid,NULL,0);
+      wait(NULL);
       printf("CHILD DONE EXECING\n");
       //close(fd[0]);
       //close(fd[1]);
@@ -172,11 +171,11 @@ int parse(char* commands){
     else{ //if child
 
     printf("CHILD COMMAND: %s PIPE READ: %d PIPE WRITE: %d\n",current_command,fd[READ_PIPE],fd[WRITE_PIPE]);
-    //close(fd[READ_PIPE]);
     printf("\nCLOSING PIPE %d\n",fd[READ_PIPE]);
     
     //CLOSE WRITE RETURN READ
     int new_READ;// = dup2(fd[READ_PIPE],readfd);
+    close(fd[READ_PIPE]);
     if(new_READ == -1 ) perror("ERROR");
     printf("Replacing %d with %d\n",fd[READ_PIPE],readfd);
     //close(fd[READ_PIPE]);  
@@ -184,10 +183,10 @@ int parse(char* commands){
     //if not first then change read from stdin to pipe
     //if not last change write from from stdout to pipe
     
-   
+    //dup2(readfd,fd[READ_PIPE]) ;
 
-    if(last
-    //!first
+    if(//last
+    !first
     ){
       //change write
       new_READ = dup2(readfd,STDIN_FILENO);
@@ -199,8 +198,8 @@ int parse(char* commands){
 
     }
 
-    if(first
-    //!last
+    if(//first
+    !last
     ){ 
       //change read
       new_READ = dup2(fd[WRITE_PIPE],STDOUT_FILENO);
@@ -210,7 +209,7 @@ int parse(char* commands){
     //  close(readfd);
       printf("COMMAND %s replacing %d with stdin\n",readfd);
     }
-      
+    //close(fd[READ_PIPE]);  
      //dup2(fd[WRITE_PIPE], STDOUT_FILENO);
      //close(fd[READ_PIPE]);
       printf("\nEXEC'ING <%s> READING FROM: %d WRITING TO: %d\n",my_argv[0],fd[READ_PIPE],fd[WRITE_PIPE]);
@@ -222,8 +221,13 @@ int parse(char* commands){
       printf("DONE EXECING\n");
       close(fd[0]);
       close(fd[1]);
+      close(readfd);
       _exit(0);
     }
+    
+    //close(fd[0]);
+    close(fd[1]);
+    //close(readfd);
 
     //close();
     //printf("closing %d\n",readfd);
