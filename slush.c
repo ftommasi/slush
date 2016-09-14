@@ -26,13 +26,12 @@ char* slice_str(char* string,int start, int end){
    return sliced; 
   }
   else{
-    //implement string reversal?
     printf("INVALID START/END FLAGS");
     return string;
   }
 }
 
-string_list tokenize(char* string){
+string_list tokenize(char* string,char * delimiter){
   char** tokenized_string = (char**)malloc(sizeof(char)*BUFFSIZE*BUFFSIZE);
   int end = 0;
   int start = 0;
@@ -40,7 +39,7 @@ string_list tokenize(char* string){
   int tokens = 0;
   while (string[i] != '\0'){ //guard for buffer overflow??
    
-     if(string[i] == ' ' || string[i] == '(' || string[i] == ')'){
+     if(!strcmp(string[i],delimiter)){
        //we should keep reading for consecutive spaces/parens/other token delimiters here
        char* token = slice_str(string,start,end);
        tokenized_string[tokens] = token;
@@ -82,7 +81,6 @@ void debugDump(int i,char** my_argv){
 void sighandler(int signum){
   printf("^C\n");
 }
-
 
 int parse(char* commands){
 //  printf("Begin Parse: %s\n",commands); 
@@ -132,9 +130,10 @@ int parse(char* commands){
       i++;
     }
     my_argv[i] = '\0';
+    printf("i %d",i);
     int j =0;
     while(my_argv[j] != '\0'){
-      printf("%s ",my_argv[j]);
+      //printf("%s ",my_argv[j]);
       j++;
     }
     char* first_arg = (char*)malloc(sizeof(char)*BUFFSIZE);
@@ -146,79 +145,100 @@ int parse(char* commands){
     }
     if(!strcmp(first_arg,"cd")){
       printf("changing directory\n");
-      chdir(my_argv[1]);
+      int cd = chdir(my_argv[1]);
+      return;
     }
     
+    if(!first_arg){
+      printf("detected enter\n");
+      return;
+    }
+
     //debugDump(i,my_argv);    
     //AFTER FORK CLOSE WRITE END OF PIPE GIVEN
 
-    printf("\npiping\n");
+//    printf("\npiping\n");
     int fd[2];
     pipe(fd);
     int pid = fork();
     if(pid != 0){ //if parent
      // close(fd[0]);
      // close(fd[1]);
-      printf("PARENT HAS READ: %d WRITE: %d\n",fd[READ_PIPE],fd[WRITE_PIPE]);
-      printf("Parent pid %d\n",getpid());
-      printf("Waiting for child PID: %d to execute %s\n",pid,my_argv[0]);
+  //    printf("PARENT HAS READ: %d WRITE: %d\n",fd[READ_PIPE],fd[WRITE_PIPE]);
+   //   printf("Parent pid %d\n",getpid());
+    //  printf("Waiting for child PID: %d to execute %s\n",pid,my_argv[0]);
       wait(pid,NULL,0);
+      //wait(NULL);
+    //  printf("------------------------------------------------\n");
+     // printf("\nCHILD DONE EXECING\n");
       //close(fd[0]);
       //close(fd[1]);
 
     }
-    else{
+    else{ //if child
 
-    printf("CHILD COMMAND: %s PIPE READ: %d PIPE WRITE: %d\n",current_command,fd[READ_PIPE],fd[WRITE_PIPE]);
-    //close(fd[READ_PIPE]);
-    printf("\nCLOSING PIPE %d\n",fd[READ_PIPE]);
-    
+   // printf("CHILD COMMAND: %s PIPE READ: %d PIPE WRITE: %d\n",current_command,fd[READ_PIPE],fd[WRITE_PIPE]);
+   // printf("\nFIRST:%d LAST:%d\n",first,last);
+   // printf("\nCLOSING PIPE %d\n",fd[READ_PIPE]);
+    close(fd[READ_PIPE]);  
     //CLOSE WRITE RETURN READ
-    int new_READ;// = dup2(fd[READ_PIPE],readfd);
-    if(new_READ == -1 ) perror("ERROR");
-    printf("Replacing %d with %d\n",fd[READ_PIPE],readfd);
-    //close(fd[READ_PIPE]);  
+    int new_READ;// = dup2(readfd,fd[READ_PIPE]);
+//    close(fd[READ_PIPE]);
+    //if(new_READ == -1 ) perror("ERROR");
     //A pipe automatically overtakes stdin and stdout    
     //if not first then change read from stdin to pipe
     //if not last change write from from stdout to pipe
     
-   
+    //dup2(readfd,fd[READ_PIPE]) ;
 
-    if(!first){
+    if(//last
+     !first
+    ){
       //change write
       new_READ = dup2(readfd,STDIN_FILENO);
-      close(fd[WRITE_PIPE]);
-      close(fd[READ_PIPE]);
-      if(new_READ == -1 ) perror("ERROR");
-  //    close(fd[WRITE_PIPE]);
-      printf("COMMAND %s replacing %d with stdin\n",current_command,fd[READ_PIPE]);
+      //close(fd[WRITE_PIPE]);
+     // printf("CLOSING %d\n",fd[WRITE_PIPE]);
+      if(new_READ == -1 ) perror("ERROR repacing readfd IN !first");
+     // printf("\n[COMMAND %s|%s replacing %d with stdin]\n",current_command,my_argv[1],fd[READ_PIPE]);
 
     }
 
-    if(!last){ 
+    if(//first
+    !last
+    ){ 
       //change read
       new_READ = dup2(fd[WRITE_PIPE],STDOUT_FILENO);
-      close(fd[READ_PIPE]);//fd[READ_PIPE]
-      close(readfd);
-      if(new_READ == -1 ) perror("ERROR");
-    //  close(readfd);
-      printf("COMMAND %s replacing %d with stdin\n",readfd);
+     //TEST// close(readfd);
+     // printf("CLOSING %d\n",readfd);
+      if(new_READ == -1 ) perror("ERROR replacing fd[WRITE} IN !last");
+     // printf("[COMMAND %s|%s replacing %d with stdin]\n",current_command,my_argv[1],readfd);
     }
-      
-    //  dup2(fd[WRITE_PIPE], STDOUT_FILENO);
-     // close(fd[READ_PIPE]);
-      printf("\nEXEC'ING <%s> READING FROM: %d WRITING TO: %d\n",my_argv[0],fd[READ_PIPE],fd[WRITE_PIPE]);
+    //close(fd[READ_PIPE]);  
+    // dup2(fd[WRITE_PIPE], STDOUT_FILENO);
+     //close(fd[READ_PIPE]);
+     // printf("\nEXEC'ING <%s | %s> READING FROM: %d WRITING TO: %d\n\n",my_argv[0],my_argv[1],fd[READ_PIPE],fd[WRITE_PIPE]);
+     // printf("------------------------------------------------\n");
       int exec_result = execvp(my_argv[0],my_argv);
       if(exec_result == -1){
-        perror("Error: ");
+        perror("Error in EXECVP : ");
 	exit(-1); 
       }
-    }
+     // printf("DONE EXECING\n");
+      //close(fd[0]);
+     // close(fd[1]);
+     // close(readfd);
+     // _exit(0);
+    }//end if child
+    
+    //close(fd[0]);
+    close(fd[1]);
+   // printf("Closing %d\n",fd[1]);
+    //close(readfd);
 
     //close();
     //printf("closing %d\n",readfd);
     //close(fd[WRITE_PIPE]);
-    printf("returning %d %s from %d\n",fd[READ_PIPE],current_command,getpid());
+    //printf("returning %d %s from %d\n",fd[READ_PIPE],current_command,getpid());
     return fd[READ_PIPE];
 
   }  
@@ -275,6 +295,7 @@ int main(int argc, char** argv){
    //strcat(new_buf," ");
 //    printf("parse\n");
     parse(marked_buf);
+    //free(marked_buf);
   }
 
   printf("successful exit\n"); 
