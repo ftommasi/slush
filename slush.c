@@ -83,7 +83,7 @@ void sighandler(int signum){
   printf("^C\n");
 }
 
-
+//GRAISON CHECK THIS OUT!! 
 int parse(char* commands){
 //  printf("Begin Parse: %s\n",commands); 
     
@@ -163,11 +163,13 @@ int parse(char* commands){
       printf("Parent pid %d\n",getpid());
       printf("Waiting for child PID: %d to execute %s\n",pid,my_argv[0]);
       wait(pid,NULL,0);
+      
+      printf("CHILD DONE EXECING\n");
       //close(fd[0]);
       //close(fd[1]);
 
     }
-    else{
+    else{ //if child
 
     printf("CHILD COMMAND: %s PIPE READ: %d PIPE WRITE: %d\n",current_command,fd[READ_PIPE],fd[WRITE_PIPE]);
     //close(fd[READ_PIPE]);
@@ -184,35 +186,43 @@ int parse(char* commands){
     
    
 
-    if(!first){
+    if(last
+    //!first
+    ){
       //change write
       new_READ = dup2(readfd,STDIN_FILENO);
       close(fd[WRITE_PIPE]);
-      close(fd[READ_PIPE]);
+     // close(fd[READ_PIPE]);
       if(new_READ == -1 ) perror("ERROR");
   //    close(fd[WRITE_PIPE]);
       printf("COMMAND %s replacing %d with stdin\n",current_command,fd[READ_PIPE]);
 
     }
 
-    if(!last){ 
+    if(first
+    //!last
+    ){ 
       //change read
       new_READ = dup2(fd[WRITE_PIPE],STDOUT_FILENO);
-      close(fd[READ_PIPE]);//fd[READ_PIPE]
+      //close(fd[READ_PIPE]);//fd[READ_PIPE]
       close(readfd);
       if(new_READ == -1 ) perror("ERROR");
     //  close(readfd);
       printf("COMMAND %s replacing %d with stdin\n",readfd);
     }
       
-    //  dup2(fd[WRITE_PIPE], STDOUT_FILENO);
-     // close(fd[READ_PIPE]);
+     //dup2(fd[WRITE_PIPE], STDOUT_FILENO);
+     //close(fd[READ_PIPE]);
       printf("\nEXEC'ING <%s> READING FROM: %d WRITING TO: %d\n",my_argv[0],fd[READ_PIPE],fd[WRITE_PIPE]);
       int exec_result = execvp(my_argv[0],my_argv);
       if(exec_result == -1){
         perror("Error: ");
 	exit(-1); 
       }
+      printf("DONE EXECING\n");
+      close(fd[0]);
+      close(fd[1]);
+      _exit(0);
     }
 
     //close();
