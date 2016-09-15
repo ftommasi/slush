@@ -27,7 +27,7 @@ char* slice_str(char* string,int start, int end){
    return sliced; 
   }
   else{
-    printf("INVALID START/END FLAGS");
+   // printf("INVALID START/END FLAGS");
     return string;
   }
 }
@@ -38,8 +38,7 @@ string_list tokenize(char* string,char * delimiter){
   int start = 0;
   int i = 0;
   int tokens = 0;
-  while (string[i] != '\0'){ //guard for buffer overflow??
-   
+  while (string[i] != '\0'){    
      if(strcmp(string[i],delimiter)){
        //we should keep reading for consecutive spaces/parens/other token delimiters here
        char* token = slice_str(string,start,end);
@@ -102,6 +101,9 @@ void sighandler(int signum){
   prompt = write(STDOUT_FILENO,display_cwd,
   strlen(display_cwd));
   prompt = write(STDOUT_FILENO,"> ",2);
+  printf("whoops\n");
+  signal(2,sighandler);
+
 }
 
 int parse(char* commands){
@@ -109,9 +111,11 @@ int parse(char* commands){
   char* current_command = strtok(commands,"(");
   char* new_commands = strtok(NULL,"\0"); 
   int readfd;
+  
   if(!current_command){
     return NULL;
   }
+  
   else{
     char first = 0;
     char last = 0;
@@ -147,8 +151,7 @@ int parse(char* commands){
     }
 
     readfd = parse(new_commands);
-   
-       char* cmd  = strtok(current_command," ");    
+    char* cmd  = strtok(current_command," ");    
     char* my_argv[256*256];
     int i=0;
     while(cmd){
@@ -157,14 +160,7 @@ int parse(char* commands){
       i++;
     }
 
-   // printf("cmd is '%s'\n");
     my_argv[i] = '\0';
-   // printf("i %d",i);
-    int j =0;
-    while(my_argv[j] != '\0'){
-      j++;
-    }
-        
     
     char* first_arg = (char*)malloc(sizeof(char)*BUFFSIZE);
     strcpy(first_arg,my_argv[0]);
@@ -174,7 +170,7 @@ int parse(char* commands){
       exit(-1);
     }
     if(!strcmp(first_arg,"cd")){
-      printf("changing directory\n");
+      //printf("changing directory\n");
       int cd = chdir(my_argv[1]);
       return;
     }
@@ -198,31 +194,28 @@ int parse(char* commands){
     //if not last change write from from stdout to pipe
     
 
-    if(//last
-     !first
-    ){
+    if(!first){
       //change write
       new_READ = dup2(readfd,STDIN_FILENO);
-      if(new_READ == -1 ) perror("ERROR repacing readfd IN !first");
+      if(new_READ == -1 ) perror("File descriptor error");
 
     }
 
-    if(//first
-    !last
-    ){ 
+    if(!last){ 
       //change read
       new_READ = dup2(fd[WRITE_PIPE],STDOUT_FILENO);
-      if(new_READ == -1 ) perror("ERROR replacing fd[WRITE} IN !last");
+      if(new_READ == -1 ) perror("File desciptor error");
     }
       int exec_result = execvp(my_argv[0],my_argv);
       if(exec_result == -1){
-        perror("Error in EXECVP : ");
+        perror("Error executing command: ");
 	exit(-1); 
-      int new_READ;}
+      int new_READ;
+      }
     }//end if child
     
     close(fd[1]);
-
+    //free(current_command);
     return fd[READ_PIPE];
 
   }  
@@ -230,7 +223,7 @@ int parse(char* commands){
 
 int main(int argc, char** argv){
   while(1){
-     signal(2,sighandler);
+    signal(2,sighandler);
     char buf[BUFFSIZE];
     //Extra Credit
     char * cwd = get_current_dir_name();
@@ -258,25 +251,25 @@ int main(int argc, char** argv){
     
     int read_result = read(STDIN_FILENO,buf,BUFFSIZE);
     if(read_result == -1){
-      perror("Error:");
+      perror("Input error");
       return -1;
     }
     
     if(read_result == 0){
-      printf("Found EOF\n");
+      //printf("Found EOF\n");
       return 0;
    }
-   if (buf[0] != '\n'){
+   if (buf[0] != '\n' || buf[0] == '('){
      char* new_buf = strtok(buf,"\n");
      char marked_buf[256] = ">";
      strcat(marked_buf,new_buf);
      char* end_sentinel = "<\0";
      strcat(marked_buf,end_sentinel);
      parse(marked_buf);
+     
      }
   }
 
-  printf("successful exit\n"); 
   return 0;
 }
 
