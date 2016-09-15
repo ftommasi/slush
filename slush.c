@@ -83,6 +83,27 @@ void sighandler(int signum){
   signal(2,sighandler);
 }
 
+int validate_command(char* command){
+  int valid = 0;
+  char* cmd = strtok(command,"\n");
+  printf("'%s'\n",cmd);
+  if(cmd[0] == '(' || cmd [strlen(cmd)-1] == '('){
+    return 0;
+  }
+  cmd = strtok(NULL,"(");
+  while(cmd){
+    int i = 0;
+    for(i; i<strlen(cmd); i++){
+      if(cmd[i] != '('){
+        valid = 1;
+	//early return?
+      }
+    }
+    cmd = strtok(NULL,"(");
+  }
+  return valid;
+}
+
 int parse(char* commands){
   
   char* current_command = strtok(commands,"(");
@@ -222,17 +243,24 @@ int main(int argc, char** argv){
       //printf("Found EOF\n");
       return 0;
    }
-   if (buf[0] != '\n' || buf[0] == '('){
-     char* new_buf = strtok(buf,"\n");
-     char marked_buf[256] = ">";
-     strcat(marked_buf,new_buf);
-     char* end_sentinel = "<\0";
-     strcat(marked_buf,end_sentinel);
-     parse(marked_buf);
+   if(validate_command(buf)){
+
+     if (buf[0] != '\n' && buf[0] != ' ' ){
+       char* new_buf = strtok(buf,"\n");
+       char marked_buf[256] = ">";
+       strcat(marked_buf,new_buf);
+       char* end_sentinel = "<\0";
+       strcat(marked_buf,end_sentinel);
+       parse(marked_buf);
      
      }
   }
+  else{
+    write(STDOUT_FILENO,"Invalid command\n",16);
 
+  }
+  
+ }
   return 0;
 }
 
