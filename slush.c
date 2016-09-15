@@ -80,7 +80,28 @@ void debugDump(int i,char** my_argv){
 }
 
 void sighandler(int signum){
-  printf("^C\n");
+  printf("\n");
+  //Recreate the command line
+  char * cwd = get_current_dir_name();
+  char* tail_cwd[2];
+  int current = 0;
+  char* new_cwd = strtok(cwd,"/");
+  while(new_cwd){
+    tail_cwd[0] = tail_cwd[1];
+    tail_cwd[1] = new_cwd;
+    current= (current+1)%2;
+    new_cwd = strtok(NULL,"/");
+    }
+  char display_cwd[256];
+  strcpy(display_cwd,tail_cwd[0]);
+  strcat(display_cwd,"/");
+  strcat(display_cwd,tail_cwd[1]);
+  strcat(display_cwd,"/");
+    
+  int prompt = write(STDOUT_FILENO,"SLUSH|",6);
+  prompt = write(STDOUT_FILENO,display_cwd,
+  strlen(display_cwd));
+  prompt = write(STDOUT_FILENO,"> ",2);
 }
 
 int parse(char* commands){
@@ -124,7 +145,6 @@ int parse(char* commands){
       close(readfd);
       return;
     }
-
 
     readfd = parse(new_commands);
    
@@ -209,9 +229,8 @@ int parse(char* commands){
 }
 
 int main(int argc, char** argv){
-   
   while(1){
-    //signal(2,sighandler);
+     signal(2,sighandler);
     char buf[BUFFSIZE];
     //Extra Credit
     char * cwd = get_current_dir_name();
