@@ -79,8 +79,31 @@ void debugDump(int i,char** my_argv){
 }
 
 void sighandler(int signum){
+  printf("\n");
+  //Recreate the command line
+  char * cwd = get_current_dir_name();
+  char* tail_cwd[2];
+  int current = 0;
+  char* new_cwd = strtok(cwd,"/");
+  while(new_cwd){
+    tail_cwd[0] = tail_cwd[1];
+    tail_cwd[1] = new_cwd;
+    current= (current+1)%2;
+    new_cwd = strtok(NULL,"/");
+    }
+  char display_cwd[256];
+  strcpy(display_cwd,tail_cwd[0]);
+  strcat(display_cwd,"/");
+  strcat(display_cwd,tail_cwd[1]);
+  strcat(display_cwd,"/");
+    
+  int prompt = write(STDOUT_FILENO,"SLUSH|",6);
+  prompt = write(STDOUT_FILENO,display_cwd,
+  strlen(display_cwd));
+  prompt = write(STDOUT_FILENO,"> ",2);
   printf("whoops\n");
   signal(2,sighandler);
+
 }
 
 int validate_command(char* command){
@@ -132,7 +155,22 @@ int parse(char* commands){
     if(first){
       current_command = slice_str(current_command,0,strlen(current_command)-2);
     }
-    
+    int k =0;
+    int p =0;
+    char spaces = 1;
+ 
+    for(k; k < strlen(current_command);k++){
+      if(current_command[k] != ' '){ 
+	  spaces = 0;
+      }   
+    }
+   
+   if(spaces){
+      printf("FOUND ONLY SPACES\n");
+      close(readfd);
+      return;
+    }
+
     readfd = parse(new_commands);
     char* cmd  = strtok(current_command," ");    
     char* my_argv[256*256];
@@ -205,7 +243,6 @@ int parse(char* commands){
 }
 
 int main(int argc, char** argv){
-   
   while(1){
     signal(2,sighandler);
     char buf[BUFFSIZE];
