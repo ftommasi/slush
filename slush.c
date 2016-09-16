@@ -107,24 +107,38 @@ void sighandler(int signum){
 }
 
 int validate_command(char* command){
-  int valid = 0;
-  char* cmd = strtok(command,"\n");
-  printf("'%s'\n",cmd);
-  if(cmd[0] == '(' || cmd [strlen(cmd)-1] == '('){
+  int valid[256];
+  char* next= strtok(command,"\n");
+  if(strstr(command,"(")==NULL){
+    return 1; //no pipes
+  }
+  if(next[0] == '(' || next[strlen(next)-1] == '('){
     return 0;
   }
-  cmd = strtok(NULL,"(");
-  while(cmd){
-    int i = 0;
-    for(i; i<strlen(cmd); i++){
-      if(cmd[i] != ' '){
-        valid = 1;
-	//early return?
+  
+  next = strtok(next,"(");
+  int valid_counter = 0;
+  int total_counter = 0;
+  while(next){
+    int i=0;
+    valid[valid_counter] = 0;
+    for(i; i< strlen(next);i++){
+      if(next[i] != ' '){
+        valid[valid_counter] = 1;
       }
     }
-    cmd = strtok(NULL,"(");
+    next = strtok(NULL,"(");
+    
+    total_counter++;
+    valid_counter++;
   }
-  return valid;
+  int i=0;
+  for(i;i<total_counter;i++){
+    if(valid[i] == 0){
+      return 0;
+    }
+  }
+  return 1;
 }
 
 int parse(char* commands){
@@ -255,8 +269,10 @@ int main(int argc, char** argv){
       //printf("Found EOF\n");
       return 0;
    }
-   //if(validate_command(buf)){
-
+   char validator_buf[256];
+   strcpy(validator_buf,buf);
+   int valid = validate_command(validator_buf);
+   if(valid > 0){
      if (buf[0] != '\n' && buf[0] != ' ' ){
        char* new_buf = strtok(buf,"\n");
        char marked_buf[256] = ">";
@@ -266,11 +282,12 @@ int main(int argc, char** argv){
        parse(marked_buf);
      
      }
+   }
  // }
- // else{
-   // write(STDOUT_FILENO,"Invalid command\n",16);
+  else{
+    write(STDOUT_FILENO,"Invalid command\n",16);
 
- // }
+  }
   
  }
   return 0;
