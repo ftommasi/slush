@@ -235,32 +235,13 @@ int main(int argc, char** argv){
     signal(2,sighandler);
     char buf[BUFFSIZE];
     //Extra Credit
-    char * cwd = get_current_dir_name();
+    char* cwd = get_current_dir_name();
     char* home = getenv("HOME");
-    char* tail_cwd[2];
-    int current = 0;
-    char* new_cwd = strtok(cwd,"/");
-    char relative_cwd[256];
-    strcat(relative_cwd,"~");
-    char *relative = slice_str(home,strlen(cwd),strlen(home));
-    //printf("slicing %d and %d\n",strlen(home),strlen(new_cwd));
-    //printf("HOME: '%s'\nrelative '%s'\n",home,relative_cwd);
-    while(new_cwd){
-      tail_cwd[0] = tail_cwd[1];
-      tail_cwd[1] = new_cwd;
-      current= (current+1)%2;
-      new_cwd = strtok(NULL,"/");
-
-    }
-    char display_cwd[256];
-    strcpy(display_cwd,tail_cwd[0]);
-    strcat(display_cwd,"/");
-    strcat(display_cwd,tail_cwd[1]);
-    strcat(display_cwd,"/");
-    
+    char * pwd = getenv("PWD");
+    char *relative = slice_str(cwd,strlen(home),strlen(pwd));
     int prompt = write(STDOUT_FILENO,"SLUSH|",6);
-    prompt = write(STDOUT_FILENO,display_cwd,
-      strlen(display_cwd));
+    prompt = write(STDOUT_FILENO,relative,
+      strlen(relative));
     prompt = write(STDOUT_FILENO,"> ",2);
     //End Extra Credit
     
