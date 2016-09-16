@@ -101,7 +101,7 @@ void sighandler(int signum){
   prompt = write(STDOUT_FILENO,display_cwd,
   strlen(display_cwd));
   prompt = write(STDOUT_FILENO,"> ",2);
-  printf("whoops\n");
+  //printf("whoops\n");
   signal(2,sighandler);
 
 }
@@ -117,7 +117,7 @@ int validate_command(char* command){
   while(cmd){
     int i = 0;
     for(i; i<strlen(cmd); i++){
-      if(cmd[i] != '('){
+      if(cmd[i] != ' '){
         valid = 1;
 	//early return?
       }
@@ -155,23 +155,9 @@ int parse(char* commands){
     if(first){
       current_command = slice_str(current_command,0,strlen(current_command)-2);
     }
-    int k =0;
-    int p =0;
-    char spaces = 1;
- 
-    for(k; k < strlen(current_command);k++){
-      if(current_command[k] != ' '){ 
-	  spaces = 0;
-      }   
-    }
-   
-   if(spaces){
-      printf("FOUND ONLY SPACES\n");
-      close(readfd);
-      return;
-    }
-
+    
     readfd = parse(new_commands);
+    if(readfd == -1) return -1;
     char* cmd  = strtok(current_command," ");    
     char* my_argv[256*256];
     int i=0;
@@ -227,6 +213,8 @@ int parse(char* commands){
       new_READ = dup2(fd[WRITE_PIPE],STDOUT_FILENO);
       if(new_READ == -1 ) perror("File desciptor error");
     }
+      if(my_argv[0]==NULL) return -1;
+      //printf("my_argv[0]=%s\n",my_argv[0]);
       int exec_result = execvp(my_argv[0],my_argv);
       if(exec_result == -1){
         perror("Error executing command: ");
@@ -248,9 +236,15 @@ int main(int argc, char** argv){
     char buf[BUFFSIZE];
     //Extra Credit
     char * cwd = get_current_dir_name();
+    char* home = getenv("HOME");
     char* tail_cwd[2];
     int current = 0;
     char* new_cwd = strtok(cwd,"/");
+    char relative_cwd[256];
+    strcat(relative_cwd,"~");
+    char *relative = slice_str(home,strlen(cwd),strlen(home));
+    //printf("slicing %d and %d\n",strlen(home),strlen(new_cwd));
+    //printf("HOME: '%s'\nrelative '%s'\n",home,relative_cwd);
     while(new_cwd){
       tail_cwd[0] = tail_cwd[1];
       tail_cwd[1] = new_cwd;
@@ -280,7 +274,7 @@ int main(int argc, char** argv){
       //printf("Found EOF\n");
       return 0;
    }
-   if(validate_command(buf)){
+   //if(validate_command(buf)){
 
      if (buf[0] != '\n' && buf[0] != ' ' ){
        char* new_buf = strtok(buf,"\n");
@@ -291,11 +285,11 @@ int main(int argc, char** argv){
        parse(marked_buf);
      
      }
-  }
-  else{
-    write(STDOUT_FILENO,"Invalid command\n",16);
+ // }
+ // else{
+   // write(STDOUT_FILENO,"Invalid command\n",16);
 
-  }
+ // }
   
  }
   return 0;
